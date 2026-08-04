@@ -74,11 +74,11 @@ python training/train_morphology.py --source mhsma --data-root data/mhsma \
     --epochs 60 -o runs/morph_mhsma --resume runs/morph_mhsma/last.pt
 ```
 
-**Measured runtime.** The smoke command above: **12 s wall clock** total on
-this repo's CPU box (2 epochs, 240 training crops, 64 px, `simplecnn`), of which
-~3 s is training and the rest is data generation, calibration and plotting.
-Runtime scales with (crops × epochs × backbone cost); no MHSMA timing is quoted
-here because no MHSMA run has been done in this checkout.
+**Measured runtime.** The smoke command above: **9 s wall clock** on this
+repo's CPU box (2 epochs, 240 training crops, 64 px, `simplecnn`), of which ~2 s
+is training and the rest is crop generation, calibration and plotting. Runtime
+scales with (crops × epochs × backbone cost); no MHSMA timing is quoted here
+because no MHSMA run has been done in this checkout.
 
 **What it is careful about**
 
@@ -144,7 +144,7 @@ python training/train_detector.py --source synthetic --epochs 2 \
     --warmup-steps 5 -s detection.architecture=todcnn -o runs/det_smoke
 ```
 
-**Measured runtime.** The command above: **6 s wall clock** on this CPU box
+**Measured runtime.** The command above: **5 s wall clock** on this CPU box
 (2 epochs, 16 training frames at 192×160, `width=8`). Nothing larger has been
 timed in this checkout.
 
@@ -303,7 +303,7 @@ percentages).
 **Produces:** `eval_pipeline.json`, `experiment.json`.
 
 **Measured runtime.** 400 frames at 640×400 with the oracle detector,
-ByteTrack and an untrained morphology net: **34 s wall clock** on this CPU box.
+ByteTrack and an untrained morphology net: **23 s wall clock** on this CPU box.
 Runtime is roughly linear in frames and superlinear in scene density.
 
 Reports:

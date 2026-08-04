@@ -81,6 +81,23 @@ candidate.
 
 Achieved throughput at 1920 × 1200 was **~6 FPS** against a 160 FPS target.
 
+One consequence of that shortfall is visible in the actuation figures and is
+worth naming so it is not mistaken for a scheduling defect. Commands are
+dispatched from the per-frame poll, so the dispatch granularity is the frame
+period. At the achieved ~5.5 FPS that period is ~180 ms, far beyond the 5 ms
+late tolerance, so `eval_pipeline.py` reports a handful of commands as LATE
+while dropping none. On hardware running at 160 FPS the poll interval is
+6.25 ms and the effect disappears. It is a symptom of CPU throughput, not of
+the scheduler.
+
+A second figure needs the same caveat: `eval_pipeline.py` reports a few
+`FIELD_ON not delivered` on any finite run. Those are the last shots, whose
+activation instants fall past the end of the recording — with a 1600 ms
+transport delay, roughly the final 1.6 s of decisions have nowhere to land.
+Over a 700-frame run (4.4 s, 10 shots) it was 2; over 240 frames it was 3. The
+count should fall to zero on a continuous run and is worth watching as a
+regression signal, but it is expected behaviour at the tail.
+
 The two dominant costs are not the models. **Best-frame selection (20.9 ms p50,
 57.7 ms p99)** and **the quality gate (12.6 ms p50)** together account for more
 of the budget than detection and morphology combined. Both are per-pixel
@@ -163,7 +180,30 @@ If the magnet cannot be placed far enough downstream, then either the shot
 duration limit or the morphology deadline has to come down, and both trade
 against decision quality.
 
-### 3.3 Resolutions arrive before their shot closes
+### 3.3 The training harness reached for the wrong VISEM
+
+`training/common/detection_data.py` imported `datasets.adapters.visem` to load
+detector training data. That is the **sample-level** VISEM adapter, which
+carries WHO percentages per participant and no bounding boxes at all — training
+a detector on it is not merely unsupported but meaningless. The detection
+dataset is `visem_tracking`, a different release with a different licence.
+
+The two packages were written against each other's documented interfaces before
+either existed, which is what let the mismatch survive: the harness's protocol
+(`video_ids()`, `load_video()`) and the adapter's API (`videos()`,
+`iter_frames()`) were both reasonable and simply different. Fixed by pointing
+at the right module and adding `_VisemTrackingProtocolAdapter`, a shim on the
+*training* side — training depends on datasets, and putting the translation the
+other way would have made the dataset adapters unusable outside this repository.
+`MhsmaAdapter` gained the two protocol methods directly, expressed in terms of
+its existing accessors.
+
+Both paths are now exercised end to end against fixtures shaped to the
+documented on-disk formats. The YOLO-to-pixel conversion is exact and
+`labels_ftid` parses track id first and class second, which is the field order
+that would silently swap class for identity if reversed.
+
+### 3.4 Resolutions arrive before their shot closes
 
 The counting gate sits at 85% of the ROI, so a track crosses it and leaves the
 field shortly afterwards — while the shot it joined is usually still filling

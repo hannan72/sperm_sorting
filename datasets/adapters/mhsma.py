@@ -449,6 +449,40 @@ class MhsmaAdapter(DatasetAdapter):
             )
         return np.stack(columns, axis=1)
 
+    # ------------------------------------------------- training-harness API
+    #
+    # ``training/common/morphology_data.py`` codes against a deliberately
+    # narrow ``MorphologyDatasetAdapter`` protocol -- ``split_names()`` and
+    # ``load_split()`` -- so that the training package and the dataset package
+    # can be developed independently. The two methods below are that protocol,
+    # expressed in terms of the richer accessors above rather than duplicating
+    # any loading logic.
+
+    def split_names(self) -> list[str]:
+        """Official split names, for the training harness protocol.
+
+        MHSMA's own naming is used verbatim -- ``valid``, not ``val`` -- since
+        that is what the shipped files are called.
+        """
+        return self.splits()
+
+    def load_split(
+        self, name: str, size: int = 128
+    ) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+        """``(images, {aspect: labels})`` for one official split.
+
+        Labels are returned in the MHSMA convention **verbatim** (0 normal,
+        1 abnormal) with no flip anywhere on this path; the single flip to
+        ``P(normal)`` lives in the inference adapter. The training harness
+        cross-checks the resulting prevalence against the published figures,
+        so an inversion introduced here would be caught rather than silently
+        trained on.
+        """
+        return (
+            self.images(name, size),
+            {aspect: self.labels(name, aspect) for aspect in MORPHOLOGY_ASPECTS},
+        )
+
     def __len__(self) -> int:
         """Total images across the three splits (at 128 px; sizes agree)."""
         return sum(int(self.images(split, 128).shape[0]) for split in MHSMA_SPLITS)

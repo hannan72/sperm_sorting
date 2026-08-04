@@ -760,7 +760,7 @@ def load_detection_source(
         info = {
             "name": str(getattr(adapter, "name", "VISEM-Tracking")),
             "licence": str(getattr(adapter, "licence", VISEM_LICENCE)),
-            "source": "datasets.adapters.visem",
+            "source": "datasets.adapters.visem_tracking",
             "root": str(root) if root else None,
             "split_unit": "video",
         }
@@ -792,45 +792,123 @@ def load_detection_source(
     return DetectionSource(splits, video_splits, check, info)
 
 
+class _VisemTrackingProtocolAdapter:
+    """Presents :class:`VisemTrackingAdapter` as a ``DetectionDatasetAdapter``.
+
+    The dataset package exposes a richer, VISEM-shaped API -- integer video
+    ids, ``FrameAnnotation`` records holding ``Detection`` objects, image paths
+    rather than pixels. This harness wants string video ids and
+    :class:`DetectionFrame` arrays.
+
+    The translation lives here, on the *training* side, deliberately. Training
+    depends on datasets; datasets must not depend on training, or the dataset
+    adapters could not be used by anything else. Putting the shim here also
+    keeps the harness's protocol narrow enough that a third-party adapter can
+    satisfy it without importing anything from this repository.
+    """
+
+    def __init__(self, adapter: Any) -> None:
+        self._adapter = adapter
+        self.name = str(getattr(adapter, "name", "VISEM-Tracking"))
+        self.licence = str(getattr(adapter, "licence", VISEM_LICENCE))
+
+    def video_ids(self) -> Sequence[str]:
+        return [str(v) for v in self._adapter.videos()]
+
+    def load_video(self, video_id: str) -> Sequence[DetectionFrame]:
+        import cv2
+
+        vid = int(video_id)
+        frames: list[DetectionFrame] = []
+        for annotation in self._adapter.iter_frames(vid):
+            if annotation.image_path is None:
+                # Label-only download: there is nothing to train a detector on.
+                # Skipping silently would produce an empty split and a
+                # mystifying "no data" error much later.
+                raise ConfigurationError(
+                    f"VISEM-Tracking video {vid} frame {annotation.frame_id} has "
+                    "labels but no image file. Detector training needs the "
+                    "extracted frames, not only the label directories."
+                )
+            image = cv2.imread(str(annotation.image_path), cv2.IMREAD_GRAYSCALE)
+            if image is None:
+                raise ConfigurationError(
+                    f"could not read {annotation.image_path}"
+                )
+            detections = annotation.detections
+            boxes = np.array(
+                [d.box.as_xyxy() for d in detections], dtype=np.float32
+            ).reshape(-1, 4)
+            class_ids = np.array(
+                [d.class_id for d in detections], dtype=np.int64
+            ).reshape(-1)
+            # Track ids are carried, not consumed: a detector never sees them,
+            # but keeping them means a detection run can be scored against
+            # tracking ground truth without a second pass over the data.
+            track_ids = (
+                np.array(
+                    [-1 if d.track_id is None else d.track_id for d in detections],
+                    dtype=np.int64,
+                )
+                if annotation.has_track_ids
+                else None
+            )
+            frames.append(
+                DetectionFrame(
+                    video_id=str(vid),
+                    frame_index=int(annotation.frame_id),
+                    image=image,
+                    boxes=boxes,
+                    class_ids=class_ids,
+                    track_ids=track_ids,
+                    meta={
+                        "source": "visem-tracking",
+                        "has_track_ids": annotation.has_track_ids,
+                    },
+                )
+            )
+        return frames
+
+
 def _load_visem_adapter(root: Path | None) -> DetectionDatasetAdapter:
-    """Import and construct the VISEM-Tracking adapter, or explain what is missing."""
+    """Import and construct the VISEM-Tracking adapter, or explain what is missing.
+
+    Note the module name: ``visem_tracking``, not ``visem``. The two are
+    different datasets and only one of them has bounding boxes -- plain VISEM
+    carries sample-level WHO percentages and nothing per-sperm, so training a
+    detector on it is not merely unsupported but meaningless.
+    """
     try:
-        module = importlib.import_module("datasets.adapters.visem")
+        module = importlib.import_module("datasets.adapters.visem_tracking")
     except ImportError as exc:
         raise ConfigurationError(
-            "--source visem requires 'datasets.adapters.visem', which is not "
-            f"importable ({exc}). Use '--source synthetic' to bootstrap against "
-            "the in-repo simulator until the adapter lands."
+            "--source visem requires 'datasets.adapters.visem_tracking', which "
+            f"is not importable ({exc}). Use '--source synthetic' to bootstrap "
+            "against the in-repo simulator."
         ) from exc
 
-    adapter_cls = None
-    for name in ("VisemTrackingAdapter", "VisemAdapter", "VISEMTrackingAdapter"):
-        adapter_cls = getattr(module, name, None)
-        if adapter_cls is not None:
-            break
+    adapter_cls = getattr(module, "VisemTrackingAdapter", None)
     if adapter_cls is None:
         available = [n for n in dir(module) if not n.startswith("_")]
         raise ConfigurationError(
-            "datasets.adapters.visem exposes no VISEM adapter class (looked for "
-            "VisemTrackingAdapter, VisemAdapter, VISEMTrackingAdapter); found: "
-            f"{', '.join(available) or '(nothing public)'}"
+            "datasets.adapters.visem_tracking has no 'VisemTrackingAdapter'; "
+            f"found: {', '.join(available) or '(nothing public)'}"
         )
 
     try:
-        adapter = adapter_cls(root) if root is not None else adapter_cls()
+        raw = adapter_cls(root) if root is not None else adapter_cls()
     except TypeError:
-        adapter = adapter_cls(root=root) if root is not None else adapter_cls()
+        raw = adapter_cls(root=root) if root is not None else adapter_cls()
 
     missing = [
         member
-        for member in ("video_ids", "load_video")
-        if not callable(getattr(adapter, member, None))
+        for member in ("videos", "iter_frames")
+        if not callable(getattr(raw, member, None))
     ]
     if missing:
         raise ConfigurationError(
-            f"{adapter_cls.__name__} does not satisfy the DetectionDatasetAdapter "
-            f"protocol: missing callable(s) {', '.join(missing)}. The harness needs "
-            "video_ids() -> Sequence[str] and load_video(id) -> Sequence[DetectionFrame], "
-            "because a by-video split cannot be expressed over a flat frame list."
+            f"{adapter_cls.__name__} is missing callable(s) {', '.join(missing)}; "
+            "the shim needs videos() -> Sequence[int] and iter_frames(video_id) "
+            "-> Iterator[FrameAnnotation]."
         )
-    return adapter  # type: ignore[return-value]
+    return _VisemTrackingProtocolAdapter(raw)  # type: ignore[return-value]
