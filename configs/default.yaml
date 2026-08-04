@@ -1,0 +1,200 @@
+# Baseline configuration.
+#
+# Every physical constant here is either a documented property of the specified
+# hardware or is explicitly marked uncalibrated. Nothing that depends on the
+# built kit -- transport delay, field rise time, micrometres per pixel, the
+# flow vector -- has a working default, because a plausible-looking guess for
+# any of them fails silently rather than loudly.
+#
+# Override anything from the command line:
+#   sperm-sorting run -c configs/default.yaml -s decision.threshold=0.6
+
+run:
+  name: default
+  mode: synthetic
+  seed: 1234
+  deterministic: true
+
+acquisition:
+  kind: synthetic
+  synthetic:
+    width: 1920
+    height: 1200
+    fps: 160.0
+    n_frames: 800
+    # 0.0345 um/px is the nominal sampling for a 3.45 um pixel behind a 100x
+    # objective with a 1x coupler. See docs/assumptions.md for the derivation
+    # and for why a reducing coupler would change every number below it.
+    um_per_px: 0.0345
+    density: 5.0
+    debris_density: 4.0
+    # 9600 px/s is ~331 um/s: fast enough to present 25 sperm per second
+    # through a 66 um field, slow enough to leave 32 frames of evidence each.
+    flow_vx_px_s: 9600.0
+    flow_vy_px_s: 0.0
+    progressive_rate: 0.6
+    normal_morphology_rate: 0.55
+    defocus_rate: 0.15
+    seed: 1234
+
+preprocess:
+  roi: null
+  normalize: none
+  invert: false
+
+quality_gate:
+  enabled: true
+  min_focus_score: 8.0
+  degraded_focus_score: 20.0
+
+detection:
+  # The detection target is the sperm HEAD, not the whole cell: at 0.0345 um/px
+  # the field is 66 x 41 um and a whole spermatozoon is 50-60 um long. A head
+  # is ~119 x 81 px and always fits. This also matches how CASA defines
+  # kinematics (on the head centroid) and how MHSMA crops are framed.
+  architecture: p2net
+  weights: null
+  score_threshold: 0.30
+  nms_iou_threshold: 0.50
+  min_box_size_px: 3.0
+  backend:
+    kind: torch
+    device: cpu
+
+tracking:
+  algorithm: bytetrack
+  high_score_threshold: 0.55
+  low_score_threshold: 0.15
+  match_iou_threshold: 0.20
+  max_age: 30
+  min_hits: 3
+
+track_quality:
+  min_observed_points: 6
+  min_duration_s: 0.05
+  max_interpolated_fraction: 0.5
+  min_mean_score: 0.25
+
+motion:
+  flow_correction:
+    # Robust estimation needs no prior calibration and adapts to pump drift.
+    # Switch to fixed_vector or flow_map once the channel has been characterised.
+    mode: robust_estimate
+    robust_quantile: 0.25
+    robust_min_tracks: 8
+  thresholds:
+    # These four grades and both velocity limits are WHO 6th ed. (2021)
+    # section 2.4.6.1 verbatim. WHO's PR is rapid+slow, NP is non-progressive,
+    # IM is immotile.
+    rapid_progressive_vsl_um_s: 25.0
+    slow_progressive_vsl_um_s: 5.0
+    immotile_vcl_um_s: 2.0
+    # Stricter than WHO, which admits progression "linearly or in a large
+    # circle". Set to 0.0 to follow WHO's wording literally.
+    min_lin_for_progressive: 0.35
+    # WHO section 2.4.6 requires 37 C: velocity is temperature-dependent, and
+    # a grading at any other temperature is not WHO-comparable.
+    sample_temperature_c: 37.0
+  # Specified in milliseconds, not frames: a fixed frame count smooths over
+  # different durations at different frame rates, which Mortimer et al. (2015)
+  # show produces aberrant ALH.
+  vap_window_ms: 100.0
+  # Attribution: WHO gives no numeric minimum frame rate. ~60 Hz is Mortimer
+  # et al. (2015). Below it, VCL is under-estimated and LIN and ALH are
+  # over-estimated, so ALH and BCF are reported unavailable instead.
+  min_fps_for_alh_bcf: 50.0
+
+best_frame:
+  top_k_frames: 1
+  w_focus: 0.25
+  w_motion_blur: 0.20
+  w_local_contrast: 0.10
+  w_exposure: 0.10
+  w_overlap: 0.15
+  w_truncation: 0.10
+  w_detector_score: 0.05
+  w_track_confidence: 0.05
+  min_quality_score: 0.20
+
+crop:
+  padding_fraction: 0.35
+  output_size: [128, 128]
+  preserve_aspect_ratio: true
+  normalize: minmax
+
+morphology:
+  backbone: mobilenetv3_small
+  weights: null
+  input_size: [128, 128]
+  # 0.5 is a placeholder, not a calibration. MHSMA abnormality prevalence runs
+  # from 30% (acrosome) to 4.6% (tail), so a shared 0.5 is meaningless for the
+  # tail head. Fit real per-aspect thresholds with training/calibrate_morphology.py
+  # and ship them as a sidecar calibration.json.
+  thresholds: {head: 0.5, acrosome: 0.5, vacuole: 0.5, tail: 0.5}
+  temperatures: {head: 1.0, acrosome: 1.0, vacuole: 1.0, tail: 1.0}
+  deadline_ms: 250.0
+  model_id: unset
+  weights_provenance: unset
+
+shots:
+  target_trackable_sperm: 25
+  minimum_trackable_sperm: 20
+  maximum_trackable_sperm: 30
+  maximum_shot_duration_seconds: 1.0
+  gate:
+    axis: x
+    # Downstream, so a track has been observed for most of its transit before
+    # it is committed to a shot.
+    position_fraction: 0.85
+    direction: 1
+
+decision:
+  # Exactly 0.60 REJECTS; the comparison is a strict >. FIELD_ON is the
+  # rejection: energising the magnet diverts the labelled population to waste.
+  threshold: 0.60
+  minimum_trackable_sperm: 20
+
+scheduling:
+  # UNCALIBRATED. Every value below is a property of the built kit and must be
+  # measured with scripts/calibrate_transport_delay.py. The scheduler refuses
+  # to arm while calibrated is false, because a wrong transport delay applies
+  # the field to the wrong fluid and raises nothing.
+  calibrated: false
+  transport_delay_ms: 0.0
+  transport_delay_std_ms: 0.0
+  field_rise_time_ms: 0.0
+  field_fall_time_ms: 0.0
+  watchdog_timeout_ms: 500.0
+  late_tolerance_ms: 5.0
+  drop_if_late_by_ms: 50.0
+  require_calibration_to_actuate: true
+
+actuation:
+  kind: mock
+  require_acknowledgement: true
+  safe_state: FIELD_OFF
+
+calibration:
+  optical:
+    # UNCALIBRATED. Image a stage micrometer and run scripts/calibrate_optics.py.
+    # Until then every velocity stays in pixels per second and motility grading
+    # returns UNDETERMINED rather than comparing um/s thresholds to pixel values.
+    calibrated: false
+    um_per_px: null
+    optics:
+      pixel_pitch_um: 3.45
+      objective_magnification: 100.0
+      # 0.5 or 0.63 for a reducing C-mount adapter. Getting this wrong scales
+      # every reported velocity by the same factor.
+      coupler_magnification: 1.0
+      numerical_aperture: 1.25
+      field_number_mm: 22.0
+
+runtime:
+  queue_size: 8
+  backpressure: drop_oldest
+
+monitoring:
+  log_level: INFO
+  audit_dir: runs
+  audit_tracks: true

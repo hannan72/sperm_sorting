@@ -1,0 +1,65 @@
+extends: default.yaml
+
+# Fully self-contained run against the procedural simulator: the only source
+# with per-sperm ground truth, so it is what the end-to-end accuracy tests
+# measure against.
+#
+# Optical and scheduling calibration are supplied here because the simulator's
+# geometry and timing are known exactly by construction -- this is the one
+# situation where "calibrated" can be asserted rather than measured, and it is
+# marked as such in the calibration_id so no audit log can be mistaken for a
+# real instrument's.
+
+run:
+  name: synthetic
+  mode: synthetic
+  max_frames: 600
+
+detection:
+  # The oracle reads ground truth from the frame, so the rest of the pipeline
+  # can be measured without a trained detector confounding the result. Raise
+  # the noise rates to see how the decision degrades with detector quality.
+  architecture: oracle
+  oracle_miss_rate: 0.02
+  oracle_false_positive_rate: 0.02
+  oracle_box_jitter_px: 1.0
+
+calibration:
+  optical:
+    calibrated: true
+    calibration_id: simulator-exact-not-a-real-instrument
+    um_per_px: 0.0345
+
+motion:
+  flow_correction:
+    mode: fixed_vector
+    # The simulator's true bulk flow, so correction is exact and any residual
+    # velocity is genuine swimming.
+    fixed_vx_px_s: 9600.0
+    fixed_vy_px_s: 0.0
+
+scheduling:
+  calibrated: true
+  calibration_id: simulator-nominal-not-a-real-instrument
+  # The magnet has to sit far enough downstream that a decision reaches it
+  # before the fluid does. The worst-case decision latency is
+  #   shot assembly (1000 ms, the duration limit)
+  # + field transit  ( 200 ms, one residence time for the last member)
+  # + morphology     ( 250 ms, the finalisation deadline)
+  # = 1450 ms
+  # so anything below that guarantees every command is dropped as late --
+  # which is exactly what a 120 ms delay produced before this was checked.
+  # 1600 ms leaves ~10% headroom. At the 331 um/s imaging-region flow that is
+  # roughly 530 um of channel, which is a compact and physically ordinary
+  # separation for a microfluidic kit.
+  #
+  # `sperm-sorting feasibility -c configs/synthetic.yaml` recomputes this.
+  transport_delay_ms: 1600.0
+  transport_delay_std_ms: 25.0
+  field_rise_time_ms: 8.0
+  field_fall_time_ms: 6.0
+  pre_activation_margin_ms: 75.0
+  post_activation_margin_ms: 75.0
+
+actuation:
+  kind: mock

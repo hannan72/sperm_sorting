@@ -1,0 +1,43 @@
+extends: default.yaml
+
+# Replay a recorded video through the identical production graph.
+#
+# Usage:
+#   sperm-sorting run -c configs/replay.yaml --video path/to/clip.mp4
+#
+# The source is supplied on the command line rather than pinned here, because
+# a video source with no path is not a valid configuration and the config
+# validator says so at load time rather than at first frame. What this file
+# fixes is the *semantics* of replay:
+#
+#   * backpressure 'block' -- nothing may be dropped, or the run is not
+#     reproducible and the determinism guarantee is void;
+#   * deterministic seeding -- the same recording must yield byte-identical
+#     decisions, which is what makes the audit log worth keeping.
+
+run:
+  name: replay
+  mode: replay
+  deterministic: true
+  seed: 1234
+
+acquisition:
+  # kind stays 'synthetic' until --video (or -s acquisition.kind=video plus
+  # -s acquisition.video.path=...) supplies a real file.
+  video:
+    realtime: false
+    loop: false
+    # Used only when the container reports no usable frame rate. Every
+    # velocity in the run depends on it directly, so relying on it is logged
+    # as a warning rather than passing silently.
+    fallback_fps: 160.0
+
+runtime:
+  # Required by AppConfig's cross-section validator for mode=replay.
+  backpressure: block
+
+detection:
+  architecture: p2net
+
+actuation:
+  kind: mock

@@ -1,0 +1,96 @@
+extends: default.yaml
+
+# Live acquisition on the prototype instrument.
+#
+# THIS CONFIGURATION WILL REFUSE TO ACTUATE until the two calibration blocks at
+# the bottom are filled in from real measurements. That is deliberate. Running
+# with a guessed transport delay would apply the magnetic field to the wrong
+# segment of fluid, and nothing in the system would report an error.
+
+run:
+  name: device-v1
+  mode: live
+
+acquisition:
+  kind: basler
+  basler:
+    serial_number: null          # null takes the first camera found
+    width: 1920
+    height: 1200
+    offset_x: 8
+    offset_y: 8
+    pixel_format: Mono8          # Mono12 cannot sustain full frame rate on USB3
+    # Motion blur budget: at 0.0345 um/px a sperm at 100 um/s smears 2.9 px in
+    # 1 ms but only 0.055 px in 19 us. Keep this well under a millisecond and
+    # budget the illumination accordingly -- bright enough to expose in tens of
+    # microseconds is the practical risk item for this build.
+    exposure_time_us: 200.0
+    gain_db: 0.0
+    # 1920x1200 Mono8 at 164 FPS is ~378 MB/s, at the practical USB 3.0
+    # ceiling. Set binning: 2 if the link cannot sustain it -- 2x2 gives
+    # 0.069 um/px, still ~1.6x above the Rayleigh-limited Nyquist requirement.
+    binning: 1
+    acquisition_frame_rate: 160.0
+    # OneByOne, never LatestImageOnly: tracking reconstructs trajectories from
+    # consecutive frames, and a silently discarded frame corrupts every
+    # velocity derived from them.
+    grab_strategy: OneByOne
+    max_num_buffer: 32
+    enable_chunk_timestamp: true
+    chunk_timestamp_parameter: BslChunkTimestampValue
+    chunk_timestamp_selector: ExposureStart
+    timestamp_tick_frequency_hz: 1.0e9    # ace 2 device clock: 1 tick = 1 ns
+    grab_timeout_ms: 1000
+
+detection:
+  architecture: p2net
+  weights: models/detector/p2net_device.pt
+  backend:
+    kind: onnxruntime
+    device: cuda
+
+morphology:
+  backbone: mobilenetv3_small
+  weights: models/morphology/mhsma_mobilenetv3.pt
+  # Public-dataset weights are BASELINE RESEARCH WEIGHTS. They were trained on
+  # 400x phase-contrast images of stained smears, not on this instrument's
+  # 100x oil brightfield frames. Fine-tune on device data before trusting them.
+  weights_provenance: public-research-baseline
+  deadline_ms: 250.0
+
+runtime:
+  queue_size: 16
+  backpressure: drop_oldest
+
+monitoring:
+  log_level: INFO
+  json_logs: true
+  audit_dir: runs
+  audit_tracks: true
+
+# --------------------------------------------------------------------------
+# FILL THESE IN FROM MEASUREMENTS. Do not guess.
+# --------------------------------------------------------------------------
+calibration:
+  optical:
+    # scripts/calibrate_optics.py, against an imaged stage micrometer.
+    calibrated: false
+    calibration_id: ""
+    um_per_px: null
+
+scheduling:
+  # scripts/calibrate_transport_delay.py, against a tracer bolus (>= 3 trials;
+  # the spread sets the activation margin, so it cannot be skipped).
+  calibrated: false
+  calibration_id: ""
+  transport_delay_ms: 0.0
+  transport_delay_std_ms: 0.0
+  field_rise_time_ms: 0.0
+  field_fall_time_ms: 0.0
+  require_calibration_to_actuate: true
+
+actuation:
+  kind: serial
+  serial_port: /dev/ttyUSB0
+  serial_baudrate: 115200
+  require_acknowledgement: true

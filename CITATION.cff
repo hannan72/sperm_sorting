@@ -1,0 +1,160 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it using the metadata below. Please also
+  cite the datasets and methods it builds on, listed under `references`.
+title: >-
+  sperm-sorting-ai: real-time AI-guided sperm analysis and conditional magnetic
+  sorting (research prototype)
+abstract: >-
+  A research prototype that analyses visible phenotype - presence, trajectory,
+  velocity, direction, progression, linearity and morphology - from monochrome
+  microscopy video, and emits a two-state FIELD_ON / FIELD_OFF command for a
+  conditional magnetic sorter. It does not measure DNA integrity,
+  phosphatidylserine exposure, Annexin V binding, apoptosis, magnetic labelling,
+  fertility potential or pregnancy rate. Research use only; not a medical
+  device; not clinically validated; not validated against WHO 6th edition manual
+  assessment. See docs/safety_and_claims.md.
+type: software
+version: 0.1.0
+license: Apache-2.0
+repository-code: https://github.com/hannan72/sperm_sorting
+keywords:
+  - microscopy
+  - computer-vision
+  - multi-object-tracking
+  - CASA
+  - sperm-morphology
+  - real-time
+  - research-prototype
+authors:
+  - name: sperm_sorting contributors
+    website: https://github.com/hannan72/sperm_sorting
+
+references:
+  # ---------------------------------------------------------------- standards
+  - type: manual
+    title: >-
+      WHO laboratory manual for the examination and processing of human semen
+    edition: Sixth edition
+    year: 2021
+    publisher:
+      name: World Health Organization
+    authors:
+      - name: World Health Organization
+    isbn: '9789240030787'
+    url: https://www.who.int/publications/i/item/9789240030787
+    notes: >-
+      Source of the four-category motility grading and its approximate velocity
+      limits (section 2.4.6.1, 25 um/s and 5 um/s), the requirement that the
+      sample be held at 37 C (section 2.4.6), the morphology criteria and
+      morphometry (Table 2.6), the CASA parameter definitions (section 4.5.1.4)
+      and the statement that cross-instrument comparability "is not yet known"
+      (Figure 4.4), the reference limits (Table 8.3) and the statement that they
+      are not a fertile/infertile boundary (section 8.1.3), and the Annexin V
+      MACS protocol (section 5.6.2). Verified against the official PDF; see
+      docs/source_audit.md section 4.
+
+  # ----------------------------------------------------------------- datasets
+  - type: article
+    title: >-
+      VISEM-Tracking, a human spermatozoa tracking dataset
+    journal: Scientific Data
+    year: 2023
+    authors:
+      - name: >-
+          VISEM-Tracking dataset authors (SimulaMet HOST)
+    url: https://doi.org/10.5281/zenodo.7293726
+    notes: >-
+      Also available as arXiv:2212.02842; data on Zenodo record 7293726, licensed
+      CC BY 4.0. 20 annotated 30-second clips from 20 patients; 29,196 annotated
+      frames; 656,334 bounding boxes; 1,121 unique sperm track IDs. Official
+      split is 16 train / 4 validation by video, with validation video IDs 82,
+      60, 54 and 52; there is no official test split. AUTHOR LIST INCOMPLETE -
+      the individual authors were not recorded during the source audit and must
+      be taken from the published paper before this entry is used for citation.
+      See docs/dataset_audit.md section 2.
+
+  - type: data
+    title: 'MHSMA: Modified Human Sperm Morphology Analysis dataset'
+    year: 2018
+    authors:
+      - name: >-
+          MHSMA dataset authors (github.com/soroushj/mhsma-dataset)
+    url: https://github.com/soroushj/mhsma-dataset
+    license: CC-BY-NC-SA-4.0
+    notes: >-
+      1540 grayscale single-sperm crops (1000 train / 240 valid / 300 test) from
+      235 male-factor-infertility patients, at 128x128 and 64x64, with four
+      independent binary morphology labels (head, acrosome, vacuole, tail) using
+      0 = normal and 1 = abnormal. NOTE the dataset README calls the *normal*
+      class "positive". Derived from HSMA-DS (Ghasemian 2015,
+      doi:10.1016/j.cmpb.2015.08.013). It is NOT on Zenodo; Zenodo record 2640506
+      is VISEM. AUTHOR LIST INCOMPLETE - only the repository owner's handle was
+      recorded during the source audit; complete from the primary source before
+      citing. See docs/dataset_audit.md section 1.
+
+  # ------------------------------------------------------------------ methods
+  - type: article
+    title: >-
+      TOD-CNN: an effective convolutional neural network for tiny object
+      detection in sperm videos
+    year: 2022
+    authors:
+      - family-names: Chen
+    url: https://arxiv.org/abs/2204.08166
+    notes: >-
+      Preprint arXiv:2204.08166. Source of the design argument reimplemented
+      independently in src/sperm_sorting/detection/todcnn.py - no weights, no
+      exported graph and no layer-by-layer transcription were taken. Associated
+      dataset MIaMIA-SVDS (figshare record 15074253); code repository
+      github.com/Demozsj/Detection-Sperm. AUTHOR LIST INCOMPLETE - only the first
+      author's family name is recorded in the code and in the source audit.
+
+  - type: article
+    title: >-
+      The future of computer-aided sperm analysis
+    journal: Asian Journal of Andrology
+    year: 2015
+    volume: '17'
+    issue: '4'
+    start: 545
+    end: 553
+    authors:
+      - family-names: Mortimer
+        given-names: S. T.
+      - family-names: van der Horst
+        given-names: G.
+      - family-names: Mortimer
+        given-names: D.
+    url: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4492043/
+    notes: >-
+      Open access; PMC4492043. Source of the ~60 images/s minimum imaging
+      frequency figure, which is THIS PAPER'S and not WHO's - the WHO 6th edition
+      specifies no numeric minimum frame rate. Also the source of the finding
+      that a fixed five-point average-path smoother "will provide inadequate
+      smoothing and hence widely aberrant ALH values" once the frame rate
+      changes, which is why MotionConfig.vap_window_ms is specified as a duration
+      rather than a frame count.
+
+  - type: article
+    title: >-
+      The 2021 WHO laboratory manual for the examination and processing of human
+      semen: is it a step toward better standard operating procedure?
+    journal: Fertility and Sterility
+    year: 2022
+    volume: '117'
+    issue: '2'
+    start: 246
+    end: 251
+    authors:
+      - family-names: Björndahl
+      - family-names: Kirkman-Brown
+    notes: >-
+      Open access, CC BY. Quoted verbatim in docs/safety_and_claims.md section 8
+      on emerging semen-analysis technologies asserting equivalence to WHO core
+      methods, and the source of the observation that a rapidly progressive
+      spermatozoon can equivalently be described as one moving more than five
+      head-lengths per second - which at a 4.1 um head is 20.5 um/s, against half
+      a tail length at 22.5 um and the manual's own 25 um/s. GIVEN NAMES NOT
+      RECORDED during the source audit; complete from the primary source before
+      citing.

@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sperm-analysis research demo</title>
+<link rel="stylesheet" href="/static/style.css">
+<!-- Deliberately no favicon link: the device runs offline and a missing
+     /favicon.ico request is quieter than a 404 on every load. -->
+</head>
+<body>
+
+<header class="banner banner-disclaimer" role="note">
+  <strong>Research prototype, not a medical device. It does not measure DNA integrity, apoptosis or fertility.</strong>
+  <span class="banner-sub">Every image and every track on this page is synthetic. Nothing here has been validated on human samples, and no output of this page may be used to make a clinical decision.</span>
+</header>
+
+<div class="banner banner-untrained" id="untrained-banner" role="alert">
+  <span class="banner-tag" id="untrained-tag">UNTRAINED MODEL</span>
+  <strong id="untrained-warning">untrained &mdash; predictions are not meaningful</strong>
+  <span class="banner-sub" id="untrained-detail">Loading model provenance&hellip;</span>
+</div>
+
+<main>
+
+<!-- =================================================================== -->
+<!-- 1. The generator is the ground truth                                -->
+<!-- =================================================================== -->
+<section class="card" id="generator">
+  <h2><span class="num">1</span> The generator is the ground truth</h2>
+  <p class="lede">
+    The four binary labels are drawn <em>first</em>. They then drive the continuous
+    shape and motion parameters, which are the only inputs to the renderer and to the
+    trajectory simulator. The picture and the track below describe the same virtual
+    sperm, so the label and the pixels cannot disagree &mdash; unless you override a
+    knob by hand, which is announced when it happens.
+  </p>
+
+  <div class="split">
+    <!-- ------------------------------------------------- controls -->
+    <div class="controls" id="controls">
+      <div class="ctl-row seed-row">
+        <label for="seed">seed</label>
+        <input type="number" id="seed" min="0" max="4294967295" step="1" value="1234">
+        <button type="button" id="reroll" class="primary">Re-roll</button>
+      </div>
+
+      <fieldset>
+        <legend>motility ground truth</legend>
+        <div class="ctl-row">
+          <label for="motility">class</label>
+          <select id="motility"></select>
+        </div>
+        <div class="ctl-row slider-row" id="progressive-rate-row">
+          <label for="progressive_rate">P(progressive)</label>
+          <input type="range" id="progressive_rate" min="0" max="1" step="0.01" value="0.6">
+          <output for="progressive_rate" id="progressive_rate_out">0.60</output>
+        </div>
+        <p class="hint">P(progressive) is only used when the class is set to <em>sample</em>.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>morphology prevalences &mdash; P(abnormal) per aspect</legend>
+        <div id="prevalence-sliders"></div>
+        <div class="ctl-row check-row">
+          <input type="checkbox" id="force_aspects">
+          <label for="force_aspects">force the four flags instead of drawing them</label>
+        </div>
+        <div id="aspect-forcing" class="hidden">
+          <div id="aspect-toggles"></div>
+          <div class="quick-buttons" id="aspect-quick"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>imaging</legend>
+        <div class="ctl-row">
+          <label for="image_size">crop size</label>
+          <select id="image_size">
+            <option value="64">64 x 64</option>
+            <option value="128" selected>128 x 128</option>
+          </select>
+        </div>
+        <div class="ctl-row slider-row">
+          <label for="blur_px">blur</label>
+          <input type="range" id="blur_px" min="0" max="6" step="0.1" value="0.6">
+          <output id="blur_px_out">0.6 px</output>
+        </div>
+        <div class="ctl-row slider-row">
+          <label for="noise_sigma">sensor noise</label>
+          <input type="range" id="noise_sigma" min="0" max="40" step="0.5" value="4">
+          <output id="noise_sigma_out">4.0</output>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>tracking</legend>
+        <div class="ctl-row slider-row">
+          <label for="n_points">track length</label>
+          <input type="range" id="n_points" min="8" max="512" step="1" value="96">
+          <output id="n_points_out">96 pts</output>
+        </div>
+        <div class="ctl-row slider-row">
+          <label for="fps">frame rate</label>
+          <input type="range" id="fps" min="20" max="600" step="5" value="160">
+          <output id="fps_out">160 fps</output>
+        </div>
+        <div class="ctl-row slider-row">
+          <label for="track_um_per_px">sampling</label>
+          <input type="range" id="track_um_per_px" min="0.02" max="2" step="0.01" value="0.5">
+          <output id="track_um_per_px_out">0.50 um/px</output>
+        </div>
+        <div class="ctl-row slider-row">
+          <label for="flow_vx_px_s">bulk flow x</label>
+          <input type="range" id="flow_vx_px_s" min="-400" max="400" step="5" value="0">
+          <output id="flow_vx_px_s_out">0 px/s</output>
+        </div>
+        <div class="ctl-row slider-row">
+          <label for="flow_vy_px_s">bulk flow y</label>
+          <input type="range" id="flow_vy_px_s" min="-400" max="400" step="5" value="0">
+          <output id="flow_vy_px_s_out">0 px/s</output>
+        </div>
+        <p class="hint">
+          With a non-zero bulk flow the observed CASA numbers include transport.
+          The grade shown is computed from the flow-corrected path, which is what
+          the real pipeline does &mdash; the uncorrected numbers are listed too so the
+          size of the correction is visible.
+        </p>
+      </fieldset>
+
+      <details id="knob-details">
+        <summary>continuous knobs (override)</summary>
+        <p class="hint">
+          These are normally <em>caused</em> by the binary flags above. Overriding one
+          keeps the label and changes the evidence, so the label and the picture can
+          then disagree. That is announced above the image whenever it happens.
+        </p>
+        <div class="quick-buttons">
+          <button type="button" id="clear-knobs">clear all overrides</button>
+        </div>
+        <div id="knob-sliders"></div>
+      </details>
+    </div>
+
+    <!-- ------------------------------------------------- outputs -->
+    <div class="outputs">
+      <div id="override-warning" class="inline-warn hidden" role="alert"></div>
+
+      <div class="canvas-pair">
+        <figure>
+          <figcaption>
+            rendered crop
+            <span class="mono" id="image-meta"></span>
+          </figcaption>
+          <canvas id="image-canvas" width="384" height="384" aria-label="Rendered synthetic sperm crop"></canvas>
+          <p class="hint">Upscaled with nearest-neighbour sampling: every block you see is one real pixel.</p>
+        </figure>
+        <figure>
+          <figcaption>
+            simulated trajectory
+            <span class="mono" id="track-meta"></span>
+          </figcaption>
+          <canvas id="track-canvas" width="384" height="384" aria-label="Animated simulated head trajectory"></canvas>
+          <p class="hint">
+            Head centroid, image coordinates (y increases downward), animated with a fading trail.
+            <button type="button" id="replay" class="link-button">replay</button>
+          </p>
+        </figure>
+      </div>
+
+      <div class="readouts">
+        <div>
+          <h3>CASA kinematics (flow-corrected)</h3>
+          <table class="kv" id="casa-table"><tbody></tbody></table>
+        </div>
+        <div>
+          <h3>sampled ground-truth state</h3>
+          <table class="kv" id="state-table"><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== -->
+<!-- 2. Predicted vs true                                                -->
+<!-- =================================================================== -->
+<section class="card" id="comparison">
+  <h2><span class="num">2</span> Predicted vs true, per aspect</h2>
+  <p class="lede">
+    Six independent comparisons, never averaged into one accuracy figure. A single
+    wrong aspect is enough to make a sperm ineligible, so a per-aspect view is the
+    only view in which that failure is visible.
+    <strong id="comparison-caveat"></strong>
+  </p>
+  <div class="ctl-row">
+    <button type="button" id="classify" class="primary">Classify this sperm</button>
+    <span class="hint" id="classify-note"></span>
+  </div>
+  <div class="table-scroll">
+    <table class="grid" id="compare-table">
+      <thead>
+        <tr><th scope="col">item</th><th scope="col">true (generator)</th><th scope="col">predicted (model)</th><th scope="col">P(normal)</th><th scope="col">agreement</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <p class="hint" id="eligibility-note"></p>
+</section>
+
+<!-- =================================================================== -->
+<!-- 3. The decision rule                                                -->
+<!-- =================================================================== -->
+<section class="card" id="decision">
+  <h2><span class="num">3</span> The decision rule</h2>
+
+  <div class="rule-callouts">
+    <div class="callout callout-warn">
+      <span class="callout-mark" aria-hidden="true">=</span>
+      <div>
+        <strong>Exactly 60% REJECTS.</strong>
+        The comparison is a strict <code>&gt;</code>. 15/25 is not acceptable; 16/25 is.
+        The engine compares exact rationals, so the boundary does not depend on
+        floating-point rounding.
+      </div>
+    </div>
+    <div class="callout callout-danger">
+      <span class="callout-mark" aria-hidden="true">&#9889;</span>
+      <div>
+        <strong>FIELD_ON is the rejection.</strong>
+        Energising the magnet diverts the segment to the waste channel.
+        FIELD_OFF is the pass-through to collection, and is also the safe state used
+        when no decision could be made. Reading FIELD_ON as &ldquo;good&rdquo; inverts the product.
+      </div>
+    </div>
+  </div>
+
+  <h3>the five mandated cases</h3>
+  <div class="quick-buttons" id="preset-cases"></div>
+
+  <div class="split decision-split">
+    <div class="controls">
+      <div class="ctl-row slider-row">
+        <label for="trackable">trackable count (denominator)</label>
+        <input type="range" id="trackable" min="0" max="40" step="1" value="25">
+        <output id="trackable_out">25</output>
+      </div>
+      <div class="ctl-row slider-row">
+        <label for="eligible">AI-eligible count (numerator)</label>
+        <input type="range" id="eligible" min="0" max="40" step="1" value="15">
+        <output id="eligible_out">15</output>
+      </div>
+      <p class="hint" id="decide-inputs-note"></p>
+      <p class="hint" id="decide-config-note"></p>
+    </div>
+
+    <div class="verdict" id="verdict">
+      <div class="verdict-ratio" id="verdict-ratio">&ndash;</div>
+      <div class="verdict-status" id="verdict-status">&ndash;</div>
+      <div class="verdict-field" id="verdict-field">&ndash;</div>
+      <div class="verdict-meaning" id="verdict-meaning"></div>
+      <p class="verdict-rationale" id="verdict-rationale"></p>
+      <p class="verdict-source">Returned by <code>POST /decide</code> &rarr;
+        <code>sperm_sorting.decision.engine.decide</code>. The page displays this
+        verdict; it does not compute one.</p>
+    </div>
+  </div>
+
+  <h3>the boundary, one eligible sperm at a time</h3>
+  <p class="hint" id="ladder-note"></p>
+  <div class="table-scroll">
+    <table class="grid" id="ladder-table">
+      <thead>
+        <tr><th scope="col">eligible / trackable</th><th scope="col">ratio</th><th scope="col">status</th><th scope="col">field command</th><th scope="col">note</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- =================================================================== -->
+<!-- 4. The optical budget                                               -->
+<!-- =================================================================== -->
+<section class="card" id="optics">
+  <h2><span class="num">4</span> The optical budget</h2>
+  <p class="lede">
+    Straight from <code>sperm_sorting.shots.feasibility.assess_feasibility</code>,
+    warnings included. Whether the configured geometry can deliver the configured
+    shot rate is arithmetic, not opinion.
+  </p>
+  <div class="stat-grid" id="optics-stats"></div>
+  <div id="optics-warnings"></div>
+  <details>
+    <summary>full feasibility report</summary>
+    <pre class="report" id="optics-report"></pre>
+  </details>
+  <details>
+    <summary>resolved configuration summary</summary>
+    <table class="kv" id="config-table"><tbody></tbody></table>
+  </details>
+</section>
+
+</main>
+
+<footer>
+  <p>
+    Offline by construction: no external stylesheets, fonts, scripts or images.
+    Everything on this page is served by the local FastAPI process.
+  </p>
+  <p class="mono" id="footer-provenance"></p>
+</footer>
+
+<div id="error-toast" class="toast hidden" role="alert"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

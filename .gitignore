@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+
+# Testing / typing / linting caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Datasets and generated data are never committed. They carry their own
+# licences (several are non-commercial) and are large; see docs/license_audit.md.
+data/
+datasets/raw/
+datasets/cache/
+!datasets/README.md
+
+# Trained weights and calibration artefacts
+models/**/*.pt
+models/**/*.pth
+models/**/*.onnx
+models/**/*.engine
+models/**/*.npz
+!models/README.md
+!models/.gitkeep
+
+# Run outputs: audit logs, metrics, tensorboard
+runs/
+outputs/
+lightning_logs/
+mlruns/
+*.jsonl
+!tests/data/*.jsonl
+
+# Local environment
+.env
+.env.local
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
