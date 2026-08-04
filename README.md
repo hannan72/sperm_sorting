@@ -303,6 +303,7 @@ commercially clean system.
 
 | Document | Contents |
 |---|---|
+| **[DEVELOPMENT.md](DEVELOPMENT.md)** | **Start here to work on the code.** Every module explained, the invariants you must not break, recipes, traps |
 | [assumptions.md](docs/assumptions.md) | Every assumption, its status, and the consequence if wrong |
 | [safety_and_claims.md](docs/safety_and_claims.md) | What is and is not measured; regulatory framing |
 | [pipeline.md](docs/pipeline.md) | Stage-by-stage order and the invariants each protects |

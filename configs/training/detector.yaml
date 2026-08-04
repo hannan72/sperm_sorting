@@ -1,0 +1,51 @@
+extends: ../default.yaml
+
+# Detector training.
+#
+#   python training/train_detector.py --config configs/training/detector.yaml \
+#       --source visem --data-root data/visem-tracking
+#   python training/train_detector.py --config configs/training/detector.yaml \
+#       --source synthetic --epochs 20
+#
+# Splitting is BY VIDEO and the trainer fails loudly rather than warning if a
+# split would leak: adjacent frames of one recording are near-duplicates, so a
+# frame-level split reports a validation score that is really a memorisation
+# score. See datasets/validators/leakage.py.
+
+run:
+  name: detector-train
+  seed: 1234
+  deterministic: true
+
+detection:
+  # p2net is the production candidate: an FPN whose finest and only prediction
+  # level is P2 (stride 4), which is where a 119 x 81 px sperm head lives.
+  # todcnn is the specified TOD-CNN-inspired baseline for comparison -- it never
+  # downsamples below stride 4 and is ~4.4x slower for it.
+  architecture: p2net
+  weights: null
+
+  # Kept null so the network sees native resolution. Downscaling a frame to
+  # chase throughput throws away exactly the pixels a tiny-object detector
+  # needs; reduce the camera ROI or enable binning instead.
+  input_size: null
+
+  score_threshold: 0.30
+  nms_iou_threshold: 0.50
+  # A permissive floor. At 0.0345 um/px a head is ~119 px across, so anything
+  # a few pixels wide is noise rather than a small sperm.
+  min_box_size_px: 3.0
+  class_names: ["sperm"]
+
+  backend:
+    kind: torch
+    # CHANGE THIS. Detection is 97x over the real-time budget on CPU at full
+    # resolution (measured: 603 ms/frame vs a 6.25 ms budget at 160 FPS).
+    # Training on CPU is possible only for smoke runs.
+    device: cpu
+    fp16: false
+
+  tiling:
+    # Off during training: the loss is computed on whole frames, and tiling is
+    # an inference-time latency strategy rather than a data transformation.
+    enabled: false

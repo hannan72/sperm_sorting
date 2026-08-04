@@ -1,0 +1,56 @@
+extends: ../default.yaml
+
+# Morphology training.
+#
+#   python training/train_morphology.py --config configs/training/morphology.yaml
+#   python training/train_morphology.py --config configs/training/morphology.yaml \
+#       --source synthetic --epochs 30
+#
+# Script flags (--epochs, --batch-size, --lr, --source, --data-root, ...) control
+# the optimisation. This file controls the *model and its operating point*,
+# because those are properties of the artefact and have to match at serving time
+# -- a checkpoint trained at 128x128 cannot be served by a pipeline configured
+# for 64x64, and AppConfig's cross-section validator enforces exactly that.
+
+run:
+  name: morphology-train
+  seed: 1234
+  deterministic: true
+
+morphology:
+  # mobilenetv3_small is the default production trunk. simplecnn trains in
+  # seconds on CPU and is what the smoke tests use; efficientnet_b0 is the
+  # larger comparison point the brief asks to benchmark against.
+  backbone: mobilenetv3_small
+  input_size: [128, 128]
+  batch_size: 64
+
+  # These are placeholders and are OVERWRITTEN by training. The script fits a
+  # temperature and a per-aspect threshold on the VALIDATION split (never test)
+  # and writes them to a CalibrationBundle sidecar next to the weights, which
+  # the engine prefers over anything written here. 0.5 is meaningless for the
+  # tail head at 4.6% abnormal prevalence.
+  thresholds: {head: 0.5, acrosome: 0.5, vacuole: 0.5, tail: 0.5}
+  temperatures: {head: 1.0, acrosome: 1.0, vacuole: 1.0, tail: 1.0}
+
+  model_id: morphology-mobilenetv3-v1
+  # Stamped into every audit log this model contributes to. Training overwrites
+  # it with the value matching the actual data source: public-research-baseline
+  # for MHSMA, synthetic-bootstrap for simulator crops.
+  weights_provenance: public-research-baseline
+
+  backend:
+    kind: torch
+    # Set to cuda for a real run. Morphology is the cheaper of the two models
+    # (~5 ms per crop on CPU), so this trains on CPU if it has to.
+    device: cpu
+    fp16: false
+
+# crop.output_size must equal morphology.input_size -- AppConfig refuses
+# otherwise, because a mismatch would silently resize every crop at serving
+# time and change the input distribution the model was fitted to.
+crop:
+  output_size: [128, 128]
+  padding_fraction: 0.35
+  preserve_aspect_ratio: true
+  normalize: minmax
