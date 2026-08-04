@@ -51,7 +51,7 @@ from pathlib import Path as _Path
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
 
-from training.bootstrap import ensure_importable  # noqa: E402
+from training.bootstrap import ensure_importable
 
 ensure_importable()
 

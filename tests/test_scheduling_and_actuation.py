@@ -9,19 +9,21 @@ fired at whatever fluid happens to be passing.
 
 from __future__ import annotations
 
+import itertools
+
 import pytest
 
 from sperm_sorting.actuation.base import Watchdog
 from sperm_sorting.actuation.mock import MockActuator
 from sperm_sorting.config import ActuationConfig, SchedulingConfig
 from sperm_sorting.errors import ActuatorError, CalibrationError, WatchdogTimeout
+from sperm_sorting.scheduling.clock import ManualClock, MonotonicClock, ScaledClock
+from sperm_sorting.scheduling.scheduler import ActuationScheduler
 from sperm_sorting.schemas.enums import (
     CommandOrigin,
     CommandOutcome,
     FieldCommandKind,
 )
-from sperm_sorting.scheduling.clock import ManualClock, MonotonicClock, ScaledClock
-from sperm_sorting.scheduling.scheduler import ActuationScheduler
 
 ON = FieldCommandKind.FIELD_ON
 OFF = FieldCommandKind.FIELD_OFF
@@ -75,7 +77,7 @@ def test_manual_clock_sleep_advances_instead_of_blocking() -> None:
 def test_monotonic_clock_never_decreases() -> None:
     clock = MonotonicClock()
     samples = [clock.now() for _ in range(200)]
-    assert all(b >= a for a, b in zip(samples, samples[1:], strict=False))
+    assert all(b >= a for a, b in itertools.pairwise(samples))
 
 
 def test_scaled_clock_rescales_intervals() -> None:

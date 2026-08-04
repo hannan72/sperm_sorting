@@ -30,6 +30,7 @@ camera and no SDK.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import time
 from typing import Any
@@ -372,10 +373,8 @@ class BaslerFrameSource(FrameSource):
             self._frame_id += 1
             return packet
         finally:
-            try:
+            with contextlib.suppress(Exception):
                 result.Release()
-            except Exception:
-                pass
 
     # ----------------------------------------------------------------- close
 

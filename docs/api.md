@@ -618,6 +618,10 @@ runs/20260804-141207-device-v1/
   summary.json      end-of-run summary, written at close
 ```
 
+> **Every example record in this section is illustrative, hand-constructed to
+> show the shape of the format. None of the values is a measurement.** No model
+> in this repository has been trained and no benchmark has been run.
+
 ```python
 from sperm_sorting.monitoring.audit import AuditLogger, read_events
 

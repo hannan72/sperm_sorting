@@ -231,7 +231,7 @@ def calibrate_flow_map(
         vy_px_s=float(np.mean(field[..., 1])),
         vx_std_px_s=float(np.std(field[..., 0])),
         vy_std_px_s=float(np.std(field[..., 1])),
-        n_tracks=int(len(velocities)),
+        n_tracks=len(velocities),
         method="flow_map_grid",
         map_shape=(height, width),
         notes=(

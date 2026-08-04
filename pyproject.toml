@@ -50,7 +50,11 @@ dev = [
   "pytest>=7.4",
   "pytest-cov>=4.1",
   "hypothesis>=6.90",
-  "httpx2>=0.1",   # starlette.testclient requires httpx2, not httpx
+  # starlette.testclient imports httpx2, not httpx, in the Starlette version
+  # resolved here -- it raises "requires the httpx2 package" at import time and
+  # web/test_api.py cannot collect without it. Older Starlette wants plain
+  # httpx; if you pin an older one, swap this back.
+  "httpx2>=0.1",
   "ruff>=0.3",
   "mypy>=1.8",
 ]
@@ -79,7 +83,7 @@ addopts = "-q --strict-markers"
 markers = [
   "slow: takes more than a few seconds",
   "torch: requires PyTorch",
-  "web: requires FastAPI and httpx",
+  "web: requires FastAPI and a TestClient HTTP backend",
   "hardware: requires physical camera or actuator hardware",
   "dataset: requires a downloaded public dataset",
 ]
@@ -96,6 +100,14 @@ ignore = [
   "E501",   # line length is handled by the formatter
   "B008",   # typer uses function calls in argument defaults by design
   "RUF012", # mutable class attrs are fine on pydantic models
+  # Optional lifecycle hooks on ABCs (Detector.close, MagneticActuator.warmup,
+  # ...) are deliberately concrete no-ops: most backends have nothing to
+  # release, and forcing every one to write `def close(self): pass` to satisfy
+  # an abstract declaration adds noise without adding safety.
+  "B027",
+  # `int(round(x))` is kept where it documents that a float is being
+  # deliberately quantised to a frame or step count.
+  "RUF046",
 ]
 
 [tool.ruff.lint.per-file-ignores]

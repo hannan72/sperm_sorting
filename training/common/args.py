@@ -251,7 +251,7 @@ def describe_device(device: Any) -> dict[str, Any]:
         "cuda_available": bool(torch.cuda.is_available()),
     }
     try:
-        info["cpu_count"] = len(getattr(__import__("os"), "sched_getaffinity")(0))
+        info["cpu_count"] = len(__import__("os").sched_getaffinity(0))
     except (AttributeError, OSError):  # pragma: no cover - platform dependent
         import os as _os
 

@@ -74,13 +74,13 @@ from pathlib import Path as _Path
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
 
-from training.bootstrap import ensure_importable  # noqa: E402
+from training.bootstrap import ensure_importable
 
 ensure_importable()
 
 import json  # noqa: E402
 import sys  # noqa: E402
-from collections.abc import Mapping, Sequence  # noqa: E402
+from collections.abc import Sequence  # noqa: E402
 from dataclasses import dataclass, field  # noqa: E402
 from pathlib import Path  # noqa: E402
 from typing import Any  # noqa: E402
@@ -367,7 +367,7 @@ def clear_mot(
         "n_pred_detections": int(predicted.n_detections),
         "false_negatives": int(false_negatives),
         "false_positives": int(false_positives),
-        "n_matches": int(len(matched_ious)),
+        "n_matches": len(matched_ious),
         "iou_threshold": float(iou_threshold),
         "matched_pred_ids_per_gt": {int(g): sorted(p) for g, p in matched_pairs.items()},
     }

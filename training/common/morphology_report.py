@@ -269,8 +269,7 @@ def write_morphology_plots(
             list(history),
             plot_dir / f"{tag}training_curves.png",
             loss_keys=("train_loss", "val_loss"),
-            metric_keys=tuple(f"val_{aspect}_macro_f1" for aspect in MORPHOLOGY_ASPECTS)
-            + ("val_macro_f1",),
+            metric_keys=(*tuple(f"val_{aspect}_macro_f1" for aspect in MORPHOLOGY_ASPECTS), "val_macro_f1"),
             title="morphology",
         )
         if path:

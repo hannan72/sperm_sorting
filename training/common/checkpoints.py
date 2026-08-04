@@ -128,7 +128,7 @@ class TrainingState:
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> TrainingState:
         """Rebuild from a checkpoint, tolerating keys a future version adds."""
-        known = {f for f in cls.__dataclass_fields__}
+        known = set(cls.__dataclass_fields__)
         return cls(**{k: v for k, v in data.items() if k in known})
 
 

@@ -71,7 +71,7 @@ from pathlib import Path as _Path
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
 
-from training.bootstrap import ensure_importable  # noqa: E402
+from training.bootstrap import ensure_importable
 
 ensure_importable()
 
@@ -271,6 +271,12 @@ def run_pipeline(cfg: Any, *, max_frames: int | None = None) -> PipelineRun:
         run.decisions.extend(pipeline.flush())
         run.tracks = dict(pipeline.tracks_by_id)
         run.shots = list(pipeline.shots.history)
+        # The scheduler's own history, not the per-frame FrameResult lists. Shots
+        # decided during flush() -- which is most of the last few on any bounded
+        # run -- issue their commands after the last FrameResult exists, so
+        # collecting from the frames alone silently loses them and makes those
+        # shots look like they were never commanded.
+        run.commands = list(pipeline.scheduler.history)
         run.summary = pipeline.summary()
         run.gt_tracks.fps = float(cfg.acquisition.synthetic.fps)
     finally:
@@ -596,31 +602,58 @@ def command_alignment(run: PipelineRun, decisions: Mapping[str, Any], cfg: Any) 
         )
 
     commanded: dict[int, FieldCommandKind] = {}
+    outcome_by_shot: dict[int, str] = {}
     for command in run.commands:
         if command.shot_id is None:
             continue
-        # A shot that is rejected gets FIELD_ON and then a release FIELD_OFF.
-        # The state that characterises the shot is the first command it issued.
-        commanded.setdefault(int(command.shot_id), command.kind)
+        # A rejected shot gets FIELD_ON and then a release FIELD_OFF. The state
+        # that characterises the shot is the first command it issued.
+        shot_id = int(command.shot_id)
+        if shot_id not in commanded:
+            commanded[shot_id] = command.kind
+            outcome_by_shot[shot_id] = str(command.outcome)
 
-    matched = mismatched = missing = 0
+    matched = mismatched = 0
+    without_explicit_command = 0
+    not_delivered = 0
     per_shot: list[dict[str, Any]] = []
+
     for shot_id, want in required.items():
-        got = commanded.get(shot_id)
-        if got is None:
-            missing += 1
-            state = "no_command_issued"
-        elif got == want:
+        issued = commanded.get(shot_id)
+        # No command is not the same as no field state. `Pipeline._schedule_for`
+        # omits a command only when the field is already FIELD_OFF -- an accepted
+        # shot needs no actuator traffic to be handled correctly -- so the
+        # *effective* state for an uncommanded shot is FIELD_OFF, and scoring it
+        # as a failure would penalise the pipeline for the one optimisation it
+        # is explicitly documented to make.
+        effective = issued if issued is not None else FieldCommandKind.FIELD_OFF
+        if issued is None:
+            without_explicit_command += 1
+
+        if effective == want:
             matched += 1
             state = "aligned"
         else:
             mismatched += 1
             state = "misaligned"
+
+        outcome = outcome_by_shot.get(shot_id)
+        # A command that was superseded or never dispatched did not reach the
+        # magnet. For a shot that needs FIELD_ON that is a real failure, even
+        # though the decision itself was right; it is counted separately so the
+        # decision error and the delivery error are not blended.
+        delivered = issued is None or outcome in ("dispatched", "acknowledged")
+        if want is FieldCommandKind.FIELD_ON and not delivered:
+            not_delivered += 1
+
         per_shot.append(
             {
                 "shot_id": shot_id,
                 "required": str(want),
-                "commanded": str(got) if got is not None else None,
+                "commanded": str(issued) if issued is not None else None,
+                "effective": str(effective),
+                "first_command_outcome": outcome,
+                "delivered": delivered,
                 "state": state,
             }
         )
@@ -641,13 +674,20 @@ def command_alignment(run: PipelineRun, decisions: Mapping[str, Any], cfg: Any) 
         "n_shots_with_a_decision": total,
         "n_aligned": matched,
         "n_misaligned": mismatched,
-        "n_without_command": missing,
-        "command_alignment_error": float((mismatched + missing) / total) if total else float("nan"),
+        "n_without_explicit_command": without_explicit_command,
+        "n_field_on_not_delivered": not_delivered,
+        "command_alignment_error": float(mismatched / total) if total else float("nan"),
         "alignment_rate": float(matched / total) if total else float("nan"),
+        "delivery_failure_rate": float(not_delivered / total) if total else float("nan"),
         "commands_dispatched": int(scheduler.get("commands_dispatched", 0)),
         "commands_late": int(scheduler.get("commands_late", 0)),
         "commands_dropped_late": int(scheduler.get("commands_dropped_late", 0)),
         "command_outcomes": outcomes,
+        "uncommanded_shot_policy": (
+            "a shot with no command is scored as FIELD_OFF: Pipeline._schedule_for "
+            "omits the command only when the field is already in the safe state, so "
+            "an accepted shot correctly needs no actuator traffic"
+        ),
         "timing_error_s": {
             "n": len(timing_errors),
             "mean": float(np.mean(timing_errors)) if timing_errors else float("nan"),
@@ -831,6 +871,7 @@ def _print_report(metrics: Mapping[str, Any], cfg: Any) -> None:
         {"quantity": "indeterminate rate (predicted)", "value": decisions["indeterminate_rate_predicted"]},
         {"quantity": "indeterminate rate (true)", "value": decisions["indeterminate_rate_true"]},
         {"quantity": "command-alignment error", "value": commands["command_alignment_error"]},
+        {"quantity": "  FIELD_ON not delivered", "value": commands["n_field_on_not_delivered"]},
         {"quantity": "  commands late", "value": commands["commands_late"]},
         {"quantity": "  commands dropped as late", "value": commands["commands_dropped_late"]},
     ]

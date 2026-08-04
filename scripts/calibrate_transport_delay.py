@@ -40,12 +40,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from sperm_sorting.calibration.transport import (  # noqa: E402
+from sperm_sorting.calibration.transport import (
     estimate_from_geometry,
     estimate_from_tracer,
     save_transport_calibration,
 )
-from sperm_sorting.errors import CalibrationError  # noqa: E402
+from sperm_sorting.errors import CalibrationError
 
 
 def main() -> int:

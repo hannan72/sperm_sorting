@@ -52,7 +52,7 @@ from pathlib import Path as _Path
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
 
-from training.bootstrap import ensure_importable  # noqa: E402
+from training.bootstrap import ensure_importable
 
 ensure_importable()
 
@@ -98,7 +98,11 @@ from training.common.logging_utils import (  # noqa: E402
 )
 from training.common.plots import plot_training_curves  # noqa: E402
 from training.common.schedules import SCHEDULE_KINDS, build_scheduler  # noqa: E402
-from training.common.seeding import make_generator, seed_everything, seed_worker  # noqa: E402
+from training.common.seeding import (  # noqa: E402
+    make_generator,
+    seed_everything,
+    seed_worker,
+)
 from training.eval_detector import FrameAnnotations, evaluate_detections  # noqa: E402
 
 #: Selection metrics. AP50 by default: validation loss on a CenterNet head is
@@ -788,7 +792,7 @@ def _run(args: Any, common: Any, record: ExperimentRecord) -> None:
             "",
             f"trained {state.epoch} epoch(s) in {format_duration(duration)} on {device}",
             f"best {manager.metric_name} = {state.best_metric:.6f} at epoch {state.best_epoch}",
-            f"video splits: " + ", ".join(
+            "video splits: " + ", ".join(
                 f"{name}={len(ids)}" for name, ids in source.video_splits.items()
             ),
             f"weights_provenance = {provenance}",

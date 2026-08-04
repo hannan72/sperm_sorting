@@ -66,11 +66,11 @@ from sperm_sorting.errors import ConfigurationError
 __all__ = [
     "MHSMA_LICENCE",
     "MHSMA_TRAIN_PREVALENCE",
+    "SOURCE_KINDS",
+    "SPLIT_NAMES",
     "MorphologyArrayDataset",
     "MorphologyDatasetAdapter",
     "MorphologySplit",
-    "SOURCE_KINDS",
-    "SPLIT_NAMES",
     "build_synthetic_split",
     "load_morphology_source",
 ]
@@ -303,10 +303,7 @@ class MorphologyArrayDataset:
         if image.ndim == 2:
             image = image.unsqueeze(0)
         # uint8 crops are 0-255; the simulator and MHSMA both produce uint8.
-        if raw.dtype == np.uint8:
-            image = image / 255.0
-        else:
-            image = torch.clamp(image, 0.0, 1.0)
+        image = image / 255.0 if raw.dtype == np.uint8 else torch.clamp(image, 0.0, 1.0)
 
         if self.augmentation is not None:
             generator = torch.Generator()

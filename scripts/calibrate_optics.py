@@ -37,17 +37,16 @@ import sys
 from pathlib import Path
 
 import cv2
-import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from sperm_sorting.calibration.optics import (  # noqa: E402
+from sperm_sorting.calibration.optics import (
     calibrate_from_graticule,
     calibrate_from_known_distance,
     save_calibration,
 )
-from sperm_sorting.config import OpticsConfig  # noqa: E402
-from sperm_sorting.errors import CalibrationError  # noqa: E402
+from sperm_sorting.config import OpticsConfig
+from sperm_sorting.errors import CalibrationError
 
 
 def main() -> int:

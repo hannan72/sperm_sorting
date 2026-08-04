@@ -68,14 +68,13 @@ from pathlib import Path as _Path
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
 
-from training.bootstrap import ensure_importable  # noqa: E402
+from training.bootstrap import ensure_importable
 
 ensure_importable()
 
 import json  # noqa: E402
 import sys  # noqa: E402
-import time  # noqa: E402
-from collections.abc import Mapping, Sequence  # noqa: E402
+from collections.abc import Sequence  # noqa: E402
 from dataclasses import dataclass, field  # noqa: E402
 from pathlib import Path  # noqa: E402
 from typing import Any  # noqa: E402
@@ -83,7 +82,7 @@ from typing import Any  # noqa: E402
 import numpy as np  # noqa: E402
 
 from sperm_sorting.errors import SpermSortingError  # noqa: E402
-from sperm_sorting.schemas.detection import BoundingBox, Detection  # noqa: E402
+from sperm_sorting.schemas.detection import Detection  # noqa: E402
 from training.common.args import (  # noqa: E402
     build_parser,
     describe_device,

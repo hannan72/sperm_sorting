@@ -15,6 +15,7 @@ from sperm_sorting.schemas.enums import SourceKind, TimestampSource, TrackState
 from sperm_sorting.schemas.frame import FramePacket
 from sperm_sorting.schemas.track import TrackPoint, TrackRecord
 
+
 def make_frame(
     frame_id: int = 0,
     capture_time_s: float = 0.0,

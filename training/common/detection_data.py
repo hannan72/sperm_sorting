@@ -270,7 +270,7 @@ def split_by_video(
     there are fewer than three recordings), because a validation split of zero
     videos silently disables early stopping and best-checkpoint selection.
     """
-    unique = sorted(set(str(v) for v in video_ids))
+    unique = sorted({str(v) for v in video_ids})
     if len(unique) < 3:
         raise ConfigurationError(
             f"a by-video split needs at least 3 recordings, got {len(unique)}: "

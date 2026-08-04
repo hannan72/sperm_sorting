@@ -118,10 +118,11 @@ class BaslerConfig(_Base):
     #: see docs/calibration.md for the full blur budget.
     exposure_time_us: float = 200.0
     gain_db: float = 0.0
-    #: Symmetric binning. 2x2 gives 0.069 um/px, which is still ~1.6x above
-    #: the Rayleigh-limited Nyquist requirement, while cutting the data rate
-    #: fourfold and improving SNR. Off by default so the native geometry is
-    #: the baseline, but it is the cheapest fix if USB bandwidth binds.
+    #: Symmetric binning. 2x2 gives 0.069 um/px, which is still 1.94x above
+    #: the Rayleigh-limited Nyquist requirement (1.59x against the tighter
+    #: Abbe limit), while cutting the data rate fourfold and improving SNR.
+    #: Off by default so the native geometry is the baseline, but it is the
+    #: cheapest fix if USB bandwidth binds.
     binning: Literal[1, 2, 4] = 1
     #: Documented maximum is 164 fps "at default settings"; the model number
     #: and shop page say 160. 160 is used as the conservative design figure.

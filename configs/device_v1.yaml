@@ -28,7 +28,8 @@ acquisition:
     gain_db: 0.0
     # 1920x1200 Mono8 at 164 FPS is ~378 MB/s, at the practical USB 3.0
     # ceiling. Set binning: 2 if the link cannot sustain it -- 2x2 gives
-    # 0.069 um/px, still ~1.6x above the Rayleigh-limited Nyquist requirement.
+    # 0.069 um/px, still 1.94x above the Rayleigh-limited Nyquist requirement
+    # (1.59x against the tighter Abbe limit).
     binning: 1
     acquisition_frame_rate: 160.0
     # OneByOne, never LatestImageOnly: tracking reconstructs trajectories from

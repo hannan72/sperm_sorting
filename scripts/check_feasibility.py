@@ -33,8 +33,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from sperm_sorting.config import load_config  # noqa: E402
-from sperm_sorting.shots.feasibility import assess_feasibility  # noqa: E402
+from sperm_sorting.config import load_config
+from sperm_sorting.shots.feasibility import assess_feasibility
 
 
 def main() -> int:

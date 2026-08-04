@@ -12,6 +12,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from builders import make_track
 from sperm_sorting.calibration.flow import calibrate_fixed_vector, calibrate_flow_map
 from sperm_sorting.calibration.optics import (
     calibrate_from_graticule,
@@ -31,8 +32,6 @@ from sperm_sorting.config import (
     SchedulingConfig,
 )
 from sperm_sorting.errors import CalibrationError
-
-from builders import make_track
 
 TRUE_UM_PER_PX = 0.0345
 

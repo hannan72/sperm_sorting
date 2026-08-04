@@ -154,9 +154,7 @@ class PipelineRunner:
         if limit is not None and self.n_frames >= limit:
             return False
         duration = self.cfg.run.max_duration_s
-        if duration is not None and self.pipeline.metrics.elapsed_s >= duration:
-            return False
-        return True
+        return not (duration is not None and self.pipeline.metrics.elapsed_s >= duration)
 
     # --------------------------------------------------------- synchronous
 

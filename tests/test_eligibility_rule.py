@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import pytest
 
+from builders import make_track
 from sperm_sorting.constants import LABEL_ABNORMAL, LABEL_NORMAL, MORPHOLOGY_ASPECTS
 from sperm_sorting.schemas.enums import (
     FlowCorrectionMode,
@@ -20,8 +21,6 @@ from sperm_sorting.schemas.enums import (
 )
 from sperm_sorting.schemas.morphology import AspectResult, MorphologyResult
 from sperm_sorting.schemas.track import MotionFeatures, TrackRecord
-
-from builders import make_track
 
 
 def make_morphology(

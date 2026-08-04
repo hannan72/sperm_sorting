@@ -12,7 +12,6 @@ truth, and the oracle detector because a pipeline test should fail when the
 
 from __future__ import annotations
 
-import numpy as np
 import pytest
 
 from sperm_sorting.app import Application

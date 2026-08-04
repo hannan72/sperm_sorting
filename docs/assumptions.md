@@ -637,7 +637,11 @@ Stated because their absence is a design decision:
 - That any public-dataset weights are **device-validated**. They are
   `public-research-baseline`, stamped as such into every checkpoint and every
   audit manifest.
-- That **any model here has been trained or evaluated**. None has. Every threshold
-  in `configs/` is a placeholder, `MorphologyConfig.model_id` and
-  `weights_provenance` both default to the literal string `"unset"`, and there is
-  no performance figure anywhere in this repository.
+- That **any model here has been trained or evaluated**. None has. The training
+  and evaluation scripts exist and have not been run; `models/` contains no
+  weights; every threshold in `configs/` is a placeholder; and
+  `MorphologyConfig.model_id` and `weights_provenance` both default to the
+  literal string `"unset"`. There is **no model-accuracy figure anywhere in this
+  repository** -- no AP, no HOTA, no sensitivity, no specificity, no balanced
+  accuracy -- and the only numbers resembling one are the deliberately labelled
+  illustrative records in `docs/api.md` section 6.

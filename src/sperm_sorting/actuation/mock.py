@@ -15,8 +15,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..config import ActuationConfig
-from ..schemas.enums import FieldCommandKind
 from ..scheduling.clock import Clock, MonotonicClock
+from ..schemas.enums import FieldCommandKind
 from .base import MagneticActuator
 
 logger = logging.getLogger(__name__)

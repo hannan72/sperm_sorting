@@ -8,18 +8,16 @@ from __future__ import annotations
 
 import pytest
 
+from builders import make_track
 from sperm_sorting.config import CountingGateConfig, ShotConfig
 from sperm_sorting.schemas.enums import (
     IneligibilityReason,
     MorphologyStatus,
     ShotCloseReason,
 )
-from sperm_sorting.schemas.morphology import MorphologyResult
 from sperm_sorting.schemas.track import TrackPoint, TrackRecord
 from sperm_sorting.shots.gate import CountingGate
 from sperm_sorting.shots.manager import ShotManager
-
-from builders import make_track
 
 ROI_W, ROI_H = 1000, 500
 

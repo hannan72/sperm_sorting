@@ -20,9 +20,9 @@ from typing import Any
 
 from ..config import ActuationConfig
 from ..errors import ActuatorError, WatchdogTimeout
+from ..scheduling.clock import Clock, MonotonicClock
 from ..schemas.command import FieldCommand
 from ..schemas.enums import CommandOutcome, FieldCommandKind
-from ..scheduling.clock import Clock, MonotonicClock
 
 logger = logging.getLogger(__name__)
 

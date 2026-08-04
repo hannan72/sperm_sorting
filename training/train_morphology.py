@@ -67,7 +67,7 @@ from pathlib import Path as _Path
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
 
-from training.bootstrap import ensure_importable  # noqa: E402
+from training.bootstrap import ensure_importable
 
 ensure_importable()
 
@@ -115,12 +115,6 @@ from training.common.logging_utils import (  # noqa: E402
     format_duration,
     print_block,
 )
-from training.common.morphology_report import (  # noqa: E402
-    all_four_normal_agreement,
-    low_positive_warnings,
-    per_aspect_confusion,
-    write_morphology_plots,
-)
 from training.common.morphology_data import (  # noqa: E402
     MHSMA_TRAIN_PREVALENCE,
     SOURCE_KINDS,
@@ -128,8 +122,18 @@ from training.common.morphology_data import (  # noqa: E402
     MorphologySource,
     load_morphology_source,
 )
+from training.common.morphology_report import (  # noqa: E402
+    all_four_normal_agreement,
+    low_positive_warnings,
+    per_aspect_confusion,
+    write_morphology_plots,
+)
 from training.common.schedules import SCHEDULE_KINDS, build_scheduler  # noqa: E402
-from training.common.seeding import make_generator, seed_everything, seed_worker  # noqa: E402
+from training.common.seeding import (  # noqa: E402
+    make_generator,
+    seed_everything,
+    seed_worker,
+)
 
 #: Metrics that may drive model selection. Raw accuracy is deliberately absent.
 SELECTION_METRICS: tuple[str, ...] = (
@@ -484,7 +488,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"configuration error: {exc}", file=sys.stderr)
         return 2
 
-    cfg = common.cfg
     out_dir = common.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 
